@@ -1,6 +1,6 @@
 import { createGroq } from "@ai-sdk/groq";
 import { createOpenAI } from "@ai-sdk/openai";
-import type { LanguageModel } from "ai";
+import type { LanguageModel, TranscriptionModel } from "ai";
 import { env } from "@/lib/env";
 import {
   getActiveProvider,
@@ -49,4 +49,19 @@ export function resolveModel(modelId: string): LanguageModel {
     baseURL: env("OPENAI_BASE_URL"),
   });
   return openai(id);
+}
+
+export function resolveTranscriptionModel(): TranscriptionModel {
+  const provider = getActiveProvider();
+  const apiKey = getLlmApiKey();
+
+  if (provider === "groq") {
+    return createGroq({ apiKey }).transcription("whisper-large-v3-turbo");
+  }
+
+  const openai = createOpenAI({
+    apiKey,
+    baseURL: env("OPENAI_BASE_URL"),
+  });
+  return openai.transcription("whisper-1");
 }

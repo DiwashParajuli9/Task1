@@ -6,6 +6,8 @@ import type { UIMessage } from "ai";
 import { RotateCcw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useChatScroll } from "@/hooks/use-chat-scroll";
+import { useVoiceMode } from "@/hooks/use-voice-mode";
+import { getMessageText } from "@/lib/voice/message-text";
 import { formatChatError } from "@/lib/llm/errors";
 import type { ModelOption } from "@/types";
 import { MessageBubble } from "./message-bubble";
@@ -25,6 +27,7 @@ export function ChatInterface({
   models,
 }: Props) {
   const [model, setModel] = useState(defaultModel);
+  const [voiceMode, setVoiceMode] = useState(false);
 
   const transport = useMemo(
     () =>
@@ -48,6 +51,21 @@ export function ChatInterface({
   const lastAssistantId = [...messages]
     .reverse()
     .find((m) => m.role === "assistant")?.id;
+
+  const lastAssistant = useMemo(() => {
+    const message = [...messages].reverse().find((m) => m.role === "assistant");
+    return message
+      ? { id: message.id, text: getMessageText(message) }
+      : { id: undefined as string | undefined, text: "" };
+  }, [messages]);
+
+  const voice = useVoiceMode({
+    enabled: voiceMode,
+    onSend: (text) => sendMessage({ text }),
+    isLoading,
+    assistantMessageId: lastAssistant.id,
+    assistantText: lastAssistant.text,
+  });
 
   return (
     <div className="flex h-full flex-1 flex-col">
@@ -124,6 +142,11 @@ export function ChatInterface({
         isLoading={isLoading}
         onSend={(text) => sendMessage({ text })}
         onStop={stop}
+        voiceMode={voiceMode}
+        onVoiceModeChange={setVoiceMode}
+        voicePhase={voice.phase}
+        voiceError={voice.error}
+        voiceSupported={voice.supported}
         onFileUploaded={async () => {
           const res = await fetch(`/api/chats/${chatId}`);
           if (res.ok) {
